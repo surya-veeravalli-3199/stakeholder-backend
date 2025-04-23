@@ -16,7 +16,7 @@ app.post("/api/query", async (req, res) => {
     const openaiRes = await axios.post(
       "https://api.openai.com/v1/chat/completions",
       {
-        model: "gpt-3.5-turbo", // ← CHANGED FROM gpt-4
+        model: "gpt-3.5-turbo",
         messages: [
           {
             role: "system",
@@ -40,28 +40,35 @@ app.post("/api/query", async (req, res) => {
     const extraction = openaiRes.data.choices[0].message.content;
 
     const serpapiRes = await axios.get("https://serpapi.com/search.json", {
-  params: {
-    engine: "google",
-    q: `site:linkedin.com/in "${extraction}"`,
-    api_key: process.env.SERPAPI_API_KEY,
-  },
+      params: {
+        engine: "google",
+        q: `site:linkedin.com/in "${extraction}"`,
+        api_key: process.env.SERPAPI_API_KEY,
+      },
+    });
+
+    const topResults = serpapiRes.data.organic_results
+      .filter((result) => result.link.includes("linkedin.com/in"))
+      .slice(0, 3)
+      .map((result, i) => ({
+        id: `serp-${i}`,
+        name: result.title || "LinkedIn Profile",
+        url: result.link,
+        reason: `Matched for "${extraction}"`,
+      }));
+
+    res.json({
+      parsedQuery: extraction,
+      stakeholders: topResults,
+    });
+  } catch (error) {
+    console.error("🔥 API Error:", error.message);
+    if (error.response) {
+      console.error("🔍 OpenAI Error:", error.response.data);
+    }
+    res.status(500).json({ error: "Something went wrong" });
+  }
 });
-
-const topResults = serpapiRes.data.organic_results
-  .filter(result => result.link.includes("linkedin.com/in"))
-  .slice(0, 3)
-  .map((result, i) => ({
-    id: `serp-${i}`,
-    name: result.title || "LinkedIn Profile",
-    url: result.link,
-    reason: `Matched for "${extraction}"`,
-  }));
-
-res.json({
-  parsedQuery: extraction,
-  stakeholders: topResults,
-});
-
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
