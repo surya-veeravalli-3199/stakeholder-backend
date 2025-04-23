@@ -13,6 +13,7 @@ app.post("/api/query", async (req, res) => {
   const { query } = req.body;
 
   try {
+    // Step 1: Use OpenAI to parse the query
     const openaiRes = await axios.post(
       "https://api.openai.com/v1/chat/completions",
       {
@@ -20,8 +21,7 @@ app.post("/api/query", async (req, res) => {
         messages: [
           {
             role: "system",
-            content:
-              "Extract the company, function, and sector from the user's query.",
+            content: "Extract the company, function, and sector from the user's query.",
           },
           {
             role: "user",
@@ -39,34 +39,35 @@ app.post("/api/query", async (req, res) => {
 
     const extraction = openaiRes.data.choices[0].message.content;
 
-    const serpapiRes = await axios.get("https://serpapi.com/search.json", {
+    // Step 2: Call SerpAPI for LinkedIn results
+    const serpApiRes = await axios.get("https://serpapi.com/search.json", {
       params: {
-        engine: "google",
-        q: `site:linkedin.com/in "${extraction}"`,
-        api_key: process.env.SERPAPI_API_KEY,
+        engine: "linkedin",
+        q: query,
+        api_key: process.env.SERPAPI_KEY,
       },
     });
 
-    const topResults = serpapiRes.data.organic_results
-      .filter((result) => result.link.includes("linkedin.com/in"))
-      .slice(0, 3)
-      .map((result, i) => ({
-        id: `serp-${i}`,
-        name: result.title || "LinkedIn Profile",
-        url: result.link,
-        reason: `Matched for "${extraction}"`,
-      }));
+    const linkedinResults = serpApiRes.data?.linkedin_profiles || [];
+
+    const stakeholders = Array.isArray(linkedinResults)
+      ? linkedinResults.map((profile, index) => ({
+          id: profile.id || `person-${index}`,
+          name: profile.name || "Unknown",
+          position: profile.position || "Unknown role",
+        }))
+      : [];
 
     res.json({
       parsedQuery: extraction,
-      stakeholders: topResults,
+      stakeholders,
     });
   } catch (error) {
     console.error("🔥 API Error:", error.message);
     if (error.response) {
-      console.error("🔍 OpenAI Error:", error.response.data);
+      console.error("📎 API Response Error:", error.response.data);
     }
-    res.status(500).json({ error: "Something went wrong" });
+    res.status(500).json({ error: "Something went wrong." });
   }
 });
 
