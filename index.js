@@ -14,7 +14,7 @@ app.post("/api/query", async (req, res) => {
 
   try {
     const openaiRes = await axios.post(
-      "https://api.openai.com/v1/chat/completions",
+      "https://api.openai.com/openai/v1/chat/completions",
       {
         model: "gpt-4",
         messages: [
@@ -38,60 +38,25 @@ app.post("/api/query", async (req, res) => {
 
     const extraction = openaiRes.data.choices[0].message.content;
 
-    // mock response (later you’ll connect scraping APIs here)
+    // mock response (you’ll later connect this to scraping logic)
     res.json({
       parsedQuery: extraction,
       stakeholders: [
         {
           id: "123",
-          name: "Jane Smith",
-          title: "VP of Business Development",
-          score: 82,
-          reason: "Active on LinkedIn, quoted in news last month, mid-tenure"
-        },
-        {
-          id: "456",
-          name: "Raj Patel",
-          title: "Director of Partnerships",
-          score: 74,
-          reason: "Recently posted about partnerships at XYZ"
+          name: "Example Person",
+          title: "Head of Partnerships",
+          company: "Vistria Partners",
+          relevanceScore: 0.92
         }
       ]
     });
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    console.error("Error:", error.message);
     res.status(500).json({ error: "Something went wrong" });
   }
 });
 
-app.get("/api/stakeholder/:id", (req, res) => {
-  const { id } = req.params;
-  // mock data
-  if (id === "123") {
-    return res.json({
-      name: "Jane Smith",
-      relevance: 95,
-      responsiveness: 82,
-      breakdown: {
-        "LinkedIn Activity": "High (3 posts in 2 weeks)",
-        "News Mention": "Quoted in Forbes in Feb",
-        "Role Fit": "VP of Biz Dev in healthcare",
-      }
-    });
-  } else if (id === "456") {
-    return res.json({
-      name: "Raj Patel",
-      relevance: 88,
-      responsiveness: 74,
-      breakdown: {
-        "LinkedIn Activity": "Medium (1 post last month)",
-        "News Mention": "Mentioned in PR for XYZ",
-        "Role Fit": "Director of Partnerships",
-      }
-    });
-  } else {
-    res.status(404).json({ error: "Not found" });
-  }
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
-
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
