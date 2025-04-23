@@ -14,45 +14,46 @@ app.post("/api/query", async (req, res) => {
 
   try {
     const openaiRes = await axios.post(
-      "https://api.openai.com/openai/v1/chat/completions",
+      "https://api.openai.com/v1/chat/completions",
       {
-        model: "gpt-4",
+        model: "gpt-3.5-turbo", // ← CHANGED FROM gpt-4
         messages: [
           {
             role: "system",
-            content: "Extract the company, function, and sector from the user's query."
+            content:
+              "Extract the company, function, and sector from the user's query.",
           },
           {
             role: "user",
-            content: query
-          }
-        ]
+            content: query,
+          },
+        ],
       },
       {
         headers: {
           Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-          "Content-Type": "application/json"
-        }
+          "Content-Type": "application/json",
+        },
       }
     );
 
     const extraction = openaiRes.data.choices[0].message.content;
 
-    // mock response (you’ll later connect this to scraping logic)
     res.json({
       parsedQuery: extraction,
       stakeholders: [
         {
           id: "123",
-          name: "Example Person",
-          title: "Head of Partnerships",
-          company: "Vistria Partners",
-          relevanceScore: 0.92
-        }
-      ]
+          name: "Sample Stakeholder",
+          reason: "Based on role and recent activity in healthcare partnerships",
+        },
+      ],
     });
   } catch (error) {
-    console.error("Error:", error.message);
+    console.error("🔥 API Error:", error.message);
+    if (error.response) {
+      console.error("🔍 OpenAI Error:", error.response.data);
+    }
     res.status(500).json({ error: "Something went wrong" });
   }
 });
