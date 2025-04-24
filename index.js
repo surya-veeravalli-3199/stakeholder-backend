@@ -39,24 +39,23 @@ app.post("/api/query", async (req, res) => {
 
     const extraction = openaiRes.data.choices[0].message.content;
 
-    // Step 2: Call SerpAPI for LinkedIn results
+    // Step 2: Use SerpAPI with Google engine to get LinkedIn profiles
     const serpApiRes = await axios.get("https://serpapi.com/search.json", {
       params: {
-        engine: "linkedin",
-        q: query,
+        engine: "google",
+        q: `site:linkedin.com/in ${query}`,
         api_key: process.env.SERPAPI_KEY,
       },
     });
 
-    const linkedinResults = serpApiRes.data?.linkedin_profiles || [];
+    const results = serpApiRes.data.organic_results || [];
 
-    const stakeholders = Array.isArray(linkedinResults)
-      ? linkedinResults.map((profile, index) => ({
-          id: profile.id || `person-${index}`,
-          name: profile.name || "Unknown",
-          position: profile.position || "Unknown role",
-        }))
-      : [];
+    const stakeholders = results.map((result, index) => ({
+      id: result.position || `person-${index}`,
+      name: result.title || "Unknown",
+      position: result.snippet || "Unknown role",
+      link: result.link || "",
+    }));
 
     res.json({
       parsedQuery: extraction,
