@@ -37,28 +37,58 @@ app.post("/api/query", async (req, res) => {
       }
     );
 
-    const extraction = openaiRes.data.choices[0].message.content;
+    const parsedQuery = openaiRes.data.choices[0].message.content;
 
-    // Step 2: Use SerpAPI with Google engine to get LinkedIn profiles
+    // Step 2: SerpAPI for LinkedIn and news results
     const serpApiRes = await axios.get("https://serpapi.com/search.json", {
       params: {
         engine: "google",
-        q: `site:linkedin.com/in ${query}`,
+        q: query,
         api_key: process.env.SERPAPI_KEY,
       },
     });
 
-    const results = serpApiRes.data.organic_results || [];
+    const newsResults = serpApiRes.data.news_results || [];
+    const organicResults = serpApiRes.data.organic_results || [];
 
-    const stakeholders = results.map((result, index) => ({
-      id: result.position || `person-${index}`,
-      name: result.title || "Unknown",
-      position: result.snippet || "Unknown role",
-      link: result.link || "",
-    }));
+    // Placeholder stakeholders based on organic results
+    const stakeholders = organicResults.slice(0, 3).map((result, index) => {
+      const linkedInMention = result.link?.includes("linkedin.com");
+      const matchedKeywords = query.split(" ").filter((word) =>
+        result.title?.toLowerCase().includes(word.toLowerCase())
+      );
+
+      const relevanceScore = Math.min(
+        100,
+        60 + matchedKeywords.length * 5 + (linkedInMention ? 10 : 0)
+      );
+
+      const responsivenessScore = Math.min(
+        100,
+        (linkedInMention ? 40 : 0) +
+          (newsResults.length > 0 ? 20 : 0) +
+          15 + // role-based assumption
+          10 + // email discoverability (placeholder)
+          10 + // vendor engagement (placeholder)
+          5 // tenure (placeholder)
+      );
+
+      return {
+        id: `stakeholder-${index}`,
+        name: result.title || "Unknown",
+        profileLink: result.link,
+        relevanceScore,
+        responsivenessScore,
+        matchedKeywords,
+        reportingLine: "Reports to Head of " + (parsedQuery.split(" ")[0] || "Company"),
+        recentLinkedInActivity: linkedInMention ? result.snippet : null,
+        newsMention: newsResults[index]?.snippet || null,
+        newsLink: newsResults[index]?.link || null,
+      };
+    });
 
     res.json({
-      parsedQuery: extraction,
+      parsedQuery,
       stakeholders,
     });
   } catch (error) {
